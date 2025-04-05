@@ -57,17 +57,16 @@ jobs:
           EXIT_CODE=$(cat test_exit_code.txt)
 
           COMMENT_BODY=$(cat <<EOF
-<details>
-<summary>❗ **Nightly Ruby Tests Failed** - Click to expand</summary>
+            <details>
+            <summary>❗ **Nightly Ruby Tests Failed** - Click to expand</summary>
 
-Rails tests failed when running with Ruby nightly.
+            Rails tests failed when running with Ruby nightly.
 
-- Exit code: $EXIT_CODE  
-- See the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for full details.
+            - Exit code: $EXIT_CODE  
+            - See the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for full details.
 
-</details>
-EOF
-)
+            </details>
+          EOF)
 
           COMMENT_EXISTS=$(gh api repos/$REPO/issues/$PR_NUMBER/comments \
             --jq '.[] | select(.body | contains("❗ **Nightly Ruby Tests Failed**"))' | wc -l)
