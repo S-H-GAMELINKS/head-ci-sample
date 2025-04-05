@@ -58,12 +58,17 @@ jobs:
 
     strategy:
       fail-fast: false
+      continue-on-error: ${{ matrix.experimental }}
       matrix:
+        experimental: false
         ruby-version:
           - '3.2'
           - '3.3'
           - '3.4'
           - 'head'
+        include:
+          - ruby-version: 'head'
+            experimental: true
     # services:
     #  redis:
     #    image: redis
