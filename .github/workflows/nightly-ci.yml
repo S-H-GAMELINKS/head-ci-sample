@@ -35,7 +35,8 @@ jobs:
         run: |
           set +e
           bin/rails test | tee test_output.log
-          echo $? > test_exit_code.txt
+          CODE=${PIPESTATUS[0]}
+          echo $CODE > test_exit_code.txt
           grep -A 10 "FAIL:" test_output.log > test_failures.txt || echo "No failures found." > test_failures.txt
           exit 0
         continue-on-error: true
