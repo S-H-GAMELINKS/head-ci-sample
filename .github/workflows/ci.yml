@@ -60,17 +60,11 @@ jobs:
       fail-fast: false
       continue-on-error: ${{ matrix.experimental }}
       matrix:
-        experimental: false
+        experimental:
+          - false
         ruby-version:
-          - '3.2'
-          - '3.3'
           - '3.4'
-          - 'head'
         include:
-          - ruby-version: '3.2'
-            experimental: true
-          - ruby-version: '3.3'
-            experimental: true
           - ruby-version: 'head'
             experimental: true
     # services:
