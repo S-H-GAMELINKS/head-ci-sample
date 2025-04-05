@@ -33,8 +33,10 @@ jobs:
         env:
           RAILS_ENV: test
         run: |
+          set +e
           bin/rails test
           echo $? > test_exit_code.txt
+          exit 0
         continue-on-error: true
 
       - name: Check test result
