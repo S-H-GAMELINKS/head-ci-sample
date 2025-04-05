@@ -1,0 +1,94 @@
+name: Nightly Ruby Test
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  nightly-ruby-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby (nightly)
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ruby-head
+          bundler-cache: true
+
+      - name: Setup DB
+        env:
+          RAILS_ENV: test
+        run: |
+          bin/rails db:test:prepare
+
+      - name: Run Rails tests
+        env:
+          RAILS_ENV: test
+        run: |
+          set +e
+          bin/rails test | tee test_output.log
+          CODE=${PIPESTATUS[0]}
+          echo $CODE > test_exit_code.txt
+          grep -A 10 "Failure:" test_output.log > test_failures.txt || echo "No failures found." > test_failures.txt
+          exit 0
+        continue-on-error: true
+
+      - name: Check test result
+        id: check_nightly
+        run: |
+          CODE=$(cat test_exit_code.txt)
+          if [ "$CODE" -ne 0 ]; then
+            echo "nightly_failed=true" >> $GITHUB_OUTPUT
+          else
+            echo "nightly_failed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Debug Output
+        run: |
+          echo "nightly_failed: ${{ steps.check_nightly.outputs.nightly_failed }}"
+          echo "event_name: ${{ github.event_name }}"
+
+      - name: Comment on PR if tests failed (folded)
+        if: steps.check_nightly.outputs.nightly_failed == 'true' && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          REPO=${{ github.repository }}
+          EXIT_CODE=$(cat test_exit_code.txt)
+          FAILURES=$(cat test_failures.txt)
+
+          COMMENT_BODY=$(cat <<EOF
+            <details>
+            <summary>❗ **Nightly Ruby Tests Failed** - Click to expand</summary>
+
+            Rails tests failed when running with Ruby nightly.
+
+            - Exit code: $EXIT_CODE
+            - See the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for full details.
+
+            ### ❌ Failure Summary:
+            \`\`\`
+            $FAILURES
+            \`\`\`
+
+            </details>
+          EOF)
+
+          COMMENT_EXISTS=$(gh api repos/$REPO/issues/$PR_NUMBER/comments \
+            --jq '.[] | select(.body | contains("❗ **Nightly Ruby Tests Failed**"))' | wc -l)
+
+          if [ "$COMMENT_EXISTS" -eq 0 ]; then
+            gh pr comment "$PR_NUMBER" --body "$COMMENT_BODY"
+          else
+            echo "Comment already exists. Skipping."
+          fi
+

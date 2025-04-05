@@ -56,23 +56,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    strategy:
-      fail-fast: false
-      continue-on-error: ${{ matrix.experimental }}
-      matrix:
-        experimental: false
-        ruby-version:
-          - '3.2'
-          - '3.3'
-          - '3.4'
-          - 'head'
-        include:
-          - ruby-version: '3.2'
-            experimental: true
-          - ruby-version: '3.3'
-            experimental: true
-          - ruby-version: 'head'
-            experimental: true
     # services:
     #  redis:
     #    image: redis
@@ -96,7 +79,8 @@ jobs:
         env:
           RAILS_ENV: test
           # REDIS_URL: redis://localhost:6379/0
-        run: bin/rails db:test:prepare test test:system
+        run: |
+          bin/rails db:test:prepare test test:system
 
       - name: Keep screenshots from failed system tests
         uses: actions/upload-artifact@v4
