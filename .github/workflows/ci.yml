@@ -55,7 +55,7 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
- 
+
     strategy:
       fail-fast: false
       matrix:
@@ -89,12 +89,41 @@ jobs:
         env:
           RAILS_ENV: test
           # REDIS_URL: redis://localhost:6379/0
-        run: bin/rails db:test:prepare test test:system
+        run: |
+          bin/rails db:test:prepare test test:system
+          echo $? > test_exit_code.txt
         continue-on-error: ${{ matrix.experimental }}
 
-      - name: Prev test result
-        if: failure()
-        run: echo 'prev test is failed!!!!!!'
+      - name: Check nightly test result
+        if: ${{ matrix.experimental }}
+        id: check_nightly
+        run: |
+          CODE=$(cat test_exit_code.txt)
+          if [ "$CODE" -ne 0 ]; then
+            echo "nightly_failed=true" >> $GITHUB_OUTPUT
+          else
+            echo "nightly_failed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Post PR comment if nightly failed
+        if: steps.check_nightly.outputs.nightly_failed == 'true' && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          REPO=${{ github.repository }}
+
+          echo "Checking for existing comment..."
+          COMMENT_EXISTS=$(gh api repos/$REPO/issues/$PR_NUMBER/comments \
+            --jq '.[] | select(.body | contains("❗ **Nightly tests failed**"))' | wc -l)
+
+          if [ "$COMMENT_EXISTS" -eq 0 ]; then
+            echo "No existing comment found. Posting comment..."
+            gh pr comment "$PR_NUMBER" \
+              --body "❗ **Nightly tests failed** in CI.\n\nPlease check the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details."
+          else
+            echo "Nightly failure comment already exists. Skipping."
+          fi
 
       - name: Keep screenshots from failed system tests
         uses: actions/upload-artifact@v4
