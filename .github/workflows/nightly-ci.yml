@@ -34,8 +34,9 @@ jobs:
           RAILS_ENV: test
         run: |
           set +e
-          bin/rails test
+          bin/rails test | tee test_output.log
           echo $? > test_exit_code.txt
+          grep -A 10 "FAIL:" test_output.log > test_failures.txt || echo "No failures found." > test_failures.txt
           exit 0
         continue-on-error: true
 
@@ -57,6 +58,7 @@ jobs:
           PR_NUMBER=${{ github.event.pull_request.number }}
           REPO=${{ github.repository }}
           EXIT_CODE=$(cat test_exit_code.txt)
+          FAILURES=$(cat test_failures.txt)
 
           COMMENT_BODY=$(cat <<EOF
             <details>
@@ -64,8 +66,13 @@ jobs:
 
             Rails tests failed when running with Ruby nightly.
 
-            - Exit code: $EXIT_CODE  
+            - Exit code: $EXIT_CODE
             - See the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for full details.
+
+            ### ❌ Failure Summary:
+            \`\`\`
+            $FAILURES
+            \`\`\`
 
             </details>
           EOF)
