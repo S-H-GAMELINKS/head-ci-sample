@@ -50,6 +50,11 @@ jobs:
             echo "nightly_failed=false" >> $GITHUB_OUTPUT
           fi
 
+      - name: Debug Output
+        run: |
+          echo "nightly_failed: ${{ steps.check_nightly.outputs.nightly_failed }}"
+          echo "event_name: ${{ github.event_name }}"
+
       - name: Comment on PR if tests failed (folded)
         if: steps.check_nightly.outputs.nightly_failed == 'true' && github.event_name == 'pull_request'
         env:
